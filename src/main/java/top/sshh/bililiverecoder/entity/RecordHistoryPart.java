@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class RecordHistoryPart {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String roomId;
@@ -46,6 +46,9 @@ public class RecordHistoryPart {
     private boolean recording;
 
     private boolean upload;
+
+    @Column(name = "file_delete", columnDefinition = "bit default 0")
+    private boolean fileDelete;
 
     private int uploadRetryCount;
 

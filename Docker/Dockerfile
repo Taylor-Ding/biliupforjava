@@ -4,5 +4,9 @@ ADD ROOT.war /ROOT.war
 
 EXPOSE 80
 
+ENV JAVA_OPTS=""
+
 RUN bash -c 'touch /ROOT.war'
-ENTRYPOINT java -XX:+UseZGC -XX:MinRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -Duser.timezone=Asia/Shanghai -Djava.security.egd=file:/dev/./urandom -jar /ROOT.war
+
+#ENTRYPOINT java -XX:+UseZGC -Duser.timezone=Asia/Shanghai -Djava.security.egd=file:/dev/./urandom -jar /ROOT.war
+ENTRYPOINT ["/bin/sh", "-c", "java $JAVA_OPTS -XX:+UseZGC -Duser.timezone=Asia/Shanghai -Djava.security.egd=file:/dev/./urandom -jar /ROOT.war"]

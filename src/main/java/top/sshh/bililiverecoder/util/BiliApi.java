@@ -15,6 +15,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import top.sshh.bililiverecoder.entity.BiliBiliUser;
 import top.sshh.bililiverecoder.entity.LiveMsg;
 import top.sshh.bililiverecoder.entity.data.*;
+import top.sshh.bililiverecoder.util.bili.Cookie;
+import top.sshh.bililiverecoder.util.bili.WebCookie;
 
 import javax.crypto.Cipher;
 import java.io.IOException;
@@ -27,7 +29,6 @@ import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,12 +40,12 @@ public class BiliApi {
     private static String appSecret = "59b43e04ad6965f34319062b478f83dd";
 
 
-    public static String getUserInfo(Long uid) {
-        Map<String, String> additionalHeaders = new HashMap<>();
-        additionalHeaders.put("referer", "https://live.bilibili.com/");
-        additionalHeaders.put("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36");
-        return HttpClientUtil.get("https://api.bilibili.com/x/space/acc/info?mid=" + uid, additionalHeaders);
-    }
+//    public static String getUserInfo(Long uid) {
+//        Map<String, String> additionalHeaders = new HashMap<>();
+//        additionalHeaders.put("referer", "https://live.bilibili.com/");
+//        additionalHeaders.put("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36");
+//        return HttpClientUtil.get("https://api.bilibili.com/x/space/acc/info?mid=" + uid, additionalHeaders);
+//    }
 
     public static String getLoginKey() {
         String url = "https://passport.bilibili.com/api/oauth2/getKey";
@@ -205,6 +206,31 @@ public class BiliApi {
         params.forEach(uriBuilder::queryParam);
         return HttpClientUtil.get(uriBuilder.toUriString(), headers);
     }
+    public static String preUpload(BiliBiliUser user, Map<String, String> param) {
+        String url = "https://member.bilibili.com/preupload";
+        Map<String, String> params = new TreeMap<>();
+        // params.put("appkey", appKey);
+        // params.put("access_key", user.getAccessToken());
+        params.put("build", "2100400");
+        params.put("channel", "html5_app_bili");
+        params.put("mobi_app", "android");
+        params.put("platform", "android");
+        params.put("ts", "" + System.currentTimeMillis() / 1000);
+        // params.put("sign", sign(params, appSecret));
+        params.putAll(param);
+
+        Map<String, String> headers = new HashMap<>();
+        long currentSecond = Instant.now().getEpochSecond();
+        headers.put("Display-ID", "XXD9E43D7A1EBB6669597650E3EE417D9E7F5-" + currentSecond);
+        headers.put("Buvid", "XXD9E43D7A1EBB6669597650E3EE417D9E7F5");
+        headers.put("User-Agent", "Mozilla/5.0 BiliDroid/5.37.0 (bbcallen@gmail.com)");
+        headers.put("Device-ID", "aBRoDWAVeRhsA3FDewMzS3lLMwM");
+
+        headers.put("cookie", user.getCookies());
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
+        params.forEach(uriBuilder::queryParam);
+        return HttpClientUtil.get(uriBuilder.toUriString(), headers);
+    }
 
 
     public static String publish(String accessToken, VideoUploadDto data) {
@@ -224,19 +250,17 @@ public class BiliApi {
         return HttpClientUtil.post(url, headers, body);
     }
 
-    public static String editPublish(String accessToken, VideoUploadDto data) {
-        String url = "https://member.bilibili.com/x/vu/client/edit?access_key=" + accessToken;
-        Map<String, String> query = new HashMap<>();
-        query.put("access_key", accessToken);
-        String sign = sign(query, appSecret);
-        url = url + "&sign=" + sign;
+    public static String editPublish(BiliBiliUser user, VideoEditUploadDto data) {
+        WebCookie cookie = Cookie.parse(user.getCookies());
+        String url = "https://member.bilibili.com/x/vu/web/edit?t=" + System.currentTimeMillis() + "&csrf=" + cookie.getCsrf();
         Map<String, String> headers = new HashMap<>();
         long currentSecond = Instant.now().getEpochSecond();
         headers.put("Display-ID", "XXD9E43D7A1EBB6669597650E3EE417D9E7F5-" + currentSecond);
         headers.put("Buvid", "XXD9E43D7A1EBB6669597650E3EE417D9E7F5");
         headers.put("User-Agent", "Mozilla/5.0 BiliDroid/5.37.0 (bbcallen@gmail.com)");
         headers.put("Device-ID", "aBRoDWAVeRhsA3FDewMzS3lLMwM");
-
+        data.setCsrf(cookie.getCsrf());
+        headers.put("cookie", cookie.getCookie());
         String body = JSON.toJSONString(data);
         return HttpClientUtil.post(url, headers, body);
     }
@@ -343,6 +367,26 @@ public class BiliApi {
         return JSON.parseObject(response, BiliVideoInfoResponse.class);
     }
 
+    public static BiliVideoPartInfoResponse getVideoPartInfo(BiliBiliUser user, String bvid) {
+        String url = "https://member.bilibili.com/x/vupre/web/archive/view";
+        Map<String, String> params = new TreeMap<>();
+        params.put("topic_grey", "1");
+        params.put("bvid", bvid);
+        params.put("t", String.valueOf(System.currentTimeMillis()));
+        Map<String, String> headers = new HashMap<>();
+        long currentSecond = Instant.now().getEpochSecond();
+        headers.put("Display-ID", "XXD9E43D7A1EBB6669597650E3EE417D9E7F5-" + currentSecond);
+        headers.put("Buvid", "XXD9E43D7A1EBB6669597650E3EE417D9E7F5");
+        headers.put("User-Agent", "Mozilla/5.0 BiliDroid/5.37.0 (bbcallen@gmail.com)");
+        headers.put("Device-ID", "aBRoDWAVeRhsA3FDewMzS3lLMwM");
+        WebCookie cookie = Cookie.parse(user.getCookies());
+        headers.put("cookie", cookie.getCookie());
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
+        params.forEach(uriBuilder::queryParam);
+        String response = HttpClientUtil.get(uriBuilder.toUriString(), headers);
+        return JSON.parseObject(response, BiliVideoPartInfoResponse.class);
+    }
+
     public static BiliDmResponse sendVideoDm(BiliBiliUser user, LiveMsg msg) {
         String url = "https://api.bilibili.com/x/v2/dm/post";
         Map<String, String> params = new TreeMap<>();
@@ -392,6 +436,10 @@ public class BiliApi {
         params.put("type", reply.getType());
         params.put("message", reply.getMessage());
         params.put("oid", reply.getOid());
+        if(StringUtils.isNotBlank(reply.getParent())){
+            params.put("root", reply.getRoot());
+            params.put("parent", reply.getParent());
+        }
         params.put("plat", "2");
         Map<String, String> headers = new HashMap<>();
         long currentSecond = Instant.now().getEpochSecond();
@@ -465,6 +513,7 @@ public class BiliApi {
         params.put("appkey", "4409e2ce8ffd12b8");
         params.put("access_token", user.getAccessToken());
         params.put("refresh_token", user.getRefreshToken());
+        params.put("ts", String.valueOf(System.currentTimeMillis()));
         Map<String, String> headers = new HashMap<>();
         if(StringUtils.isNotBlank(user.getCookies())){
             headers.put("cookie", user.getCookies());

@@ -1,13 +1,32 @@
 <div class="container" id="roomTable">
     <el-button @click="addRoomDialog=true" type="primary">添加直播间</el-button>
+    <el-tooltip class="item" content="导出用户后若程序继续运行，则用户登录状态会失效"
+                effect="dark"
+                placement="top"
+                slot="reference">
+        <el-button @click="exportConfigDialog=true" type="primary">导出配置文件</el-button>
+    </el-tooltip>
+    <el-upload
+            class="item"
+            action="/room/uploadConfig"
+            accept=".json"
+            :on-success="uploadSuccess"
+            :show-file-list="false">
+        <el-button type="primary">导入配置文件</el-button>
+    </el-upload>
     <el-table
+            v-loading="loading"
             :data="tableData"
+            height="calc(100vh - 150px )"
             style="width: 100%">
         <el-table-column type="expand">
             <template slot-scope="props">
                 <el-form class="demo-table-expand" inline label-position="left">
                     <el-form-item label="投稿分区id">
                         <span>{{ props.row.tid }}</span>
+                    </el-form-item>
+                    <el-form-item label="上传线路">
+                        <span>{{ props.row.line }}</span>
                     </el-form-item>
                     <el-form-item label="投稿封面类型">
                         <span v-if="props.row.coverType==='default'">系统默认</span>
@@ -35,6 +54,9 @@
                     </el-form-item>
                     <el-form-item label="描述模板">
                         <span>{{ props.row.descTemplate }}</span>
+                    </el-form-item>
+                    <el-form-item label="空间动态模板">
+                        <span>{{ props.row.dynamicTemplate }}</span>
                     </el-form-item>
                 </el-form>
             </template>
@@ -92,13 +114,31 @@
             </template>
         </el-table-column>
         <el-table-column
-                label="删除文件"
+                label="是否发送弹幕"
+                prop="sendDm"
+                width="120">
+            <template slot-scope="scope">
+                <el-button circle class="el-icon-check" type="success" v-if="scope.row.sendDm"></el-button>
+                <el-button circle class="el-icon-close" type="danger" v-if="!scope.row.sendDm"></el-button>
+            </template>
+        </el-table-column>
+        <el-table-column
+                label="文件后处理"
                 prop="deleteFile"
                 width="120">
             <template slot-scope="scope">
                 <span v-if="scope.row.deleteType == 0">不删除</span>
                 <span v-if="scope.row.deleteType == 1">上传完成后删除</span>
-                <span v-if="scope.row.deleteType == 2">发布成功后删除</span>
+                <span v-if="scope.row.deleteType == 2">审核通过后删除</span>
+                <span v-if="scope.row.deleteType == 3">{{scope.row.deleteDay}}天后删除</span>
+                <span v-if="scope.row.deleteType == 4">上传完成后移动到{{scope.row.moveDir}}</span>
+                <span v-if="scope.row.deleteType == 5">审核通过后移动到{{scope.row.moveDir}}</span>
+                <span v-if="scope.row.deleteType == 6">录制结束后移动到{{scope.row.moveDir}}</span>
+                <span v-if="scope.row.deleteType == 7">录制结束后复制到{{scope.row.moveDir}}</span>
+                <span v-if="scope.row.deleteType == 8">{{scope.row.deleteDay}}天后移动到{{scope.row.moveDir}}</span>
+                <span v-if="scope.row.deleteType == 9">投稿成功后删除</span>
+                <span v-if="scope.row.deleteType == 10">投稿成功后移动到{{scope.row.moveDir}}</span>
+                <span v-if="scope.row.deleteType == 11">审核通过后复制到{{scope.row.moveDir}}</span>
             </template>
         </el-table-column>
         <el-table-column
@@ -112,17 +152,21 @@
             </template>
         </el-table-column>
         <el-table-column label="操作"
-                         width="180">
+                         width="250">
             <template slot-scope="scope">
                 <el-button
                         @click="handleEdit(scope.$index, scope.row)" size="mini"
                         type="primary">编辑
                 </el-button>
+                <el-button
+                        @click="handleEeditLiveMsg(scope.$index, scope.row)" size="mini"
+                        type="primary">弹幕规则
+                </el-button>
                 <el-popconfirm
                         @confirm="deleteRoom(scope.row.id)"
                         title="确定删除吗？">
                     <el-button slot="reference" size="mini"
-                            type="danger">删除
+                               type="danger">删除
                     </el-button>
                 </el-popconfirm>
             </template>
@@ -131,7 +175,11 @@
     <el-dialog :visible.sync="dialogFormVisible" title="房间信息">
         <el-form :model="room">
             <el-form-item :label-width="formLabelWidth" label="投稿分区id">
-                <el-input autocomplete="off" type="number" v-model="room.tid"></el-input>
+                <el-row>
+                    <el-col :span="7">
+                        <el-input autocomplete="off" type="number" v-model="room.tid"></el-input>
+                    </el-col>
+                </el-row>
                 <el-cascader
                         :options="typeList"
                         :props="{label:'name',value:'id',emitPath:false}"
@@ -148,10 +196,14 @@
                 </el-cascader>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="文件忽略大小(MB)">
-                <el-input autocomplete="off" type="number" v-model="room.fileSizeLimit"></el-input>
+                <el-col :span="7">
+                    <el-input autocomplete="off" type="number" v-model="room.fileSizeLimit"></el-input>
+                </el-col>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="文件忽略时长(秒)">
-                <el-input autocomplete="off" type="number" v-model="room.durationLimit"></el-input>
+                <el-col :span="7">
+                    <el-input autocomplete="off" type="number" v-model="room.durationLimit"></el-input>
+                </el-col>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="是否自制">
                 <el-select :disabled="room.copyrightDisabled" placeholder="请选择" v-model="room.copyright">
@@ -159,16 +211,32 @@
                     <el-option label="否" :value="2"></el-option>
                 </el-select>
             </el-form-item>
+            <el-form-item :label-width="formLabelWidth" label="上传线路">
+                <el-select placeholder="请选择" v-model="room.line">
+                    <el-option :label="item" :value="item" v-for="item in lines"></el-option>
+                </el-select>
+                <el-link
+                        :underline="false"
+                        href="http://member.bilibili.com/preupload?r=ping" target="_blank" type="primary">点击测速
+                </el-link>
+            </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="标题模板">
-                <el-input autocomplete="off" v-model="room.titleTemplate"></el-input>
+                <el-input autocomplete="off" maxlength="100" v-model="room.titleTemplate"></el-input>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="分p标题模板">
-                <el-input autocomplete="off" v-model="room.partTitleTemplate"></el-input>
+                <el-input autocomplete="off" maxlength="100" v-model="room.partTitleTemplate"></el-input>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="描述模板">
                 <el-input :rows="2" autocomplete="off"
                           autosize
+                          maxlength="1800"
                           type="textarea" v-model="room.descTemplate"></el-input>
+            </el-form-item>
+            <el-form-item :label-width="formLabelWidth" label="空间动态模板">
+                <el-input :rows="2" autocomplete="off"
+                          autosize
+                          maxlength="1800"
+                          type="textarea" v-model="room.dynamicTemplate"></el-input>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="上传tag">
                 <el-input autocomplete="off" v-model="room.tags"></el-input>
@@ -184,17 +252,45 @@
             <el-form-item :label-width="formLabelWidth" label="微信消息类型">
                 <el-input autocomplete="off" v-model="room.pushMsgTags"></el-input>
             </el-form-item>
-            <el-form-item :label-width="formLabelWidth" label="删除文件">
+            <el-form-item :label-width="formLabelWidth" label="文件后处理">
                 <el-select placeholder="请选择" v-model="room.deleteType">
                     <el-option label="不删除" :value="0"></el-option>
                     <el-option label="上传完成后删除" :value="1"></el-option>
-                    <el-option label="发布成功后删除" :value="2"></el-option>
+                    <el-option :value="9" label="投稿成功后删除"></el-option>
+                    <el-option label="审核通过后删除" :value="2"></el-option>
+                    <el-option label="几天后删除" :value="3"></el-option>
+                    <el-option label="录制结束几天后移动" :value="8"></el-option>
+                    <el-option label="上传完成后移动" :value="4"></el-option>
+                    <el-option label="审核通过后移动" :value="5"></el-option>
+                    <el-option :value="6" label="录制结束后移动(无法上传)"></el-option>
+                    <el-option :value="7" label="录制结束后复制"></el-option>
+                    <el-option :value="10" label="投稿成功后移动"></el-option>
+                    <el-option :value="11" label="审核通过成功后复制"></el-option>
                 </el-select>
+            </el-form-item>
+            <el-form-item v-if="room.deleteType==3||room.deleteType==8 " :label-width="formLabelWidth" label="几天后">
+                <el-col :span="7">
+                    <el-input autocomplete="off" type="number" min="1" max="365"
+                              v-model="room.deleteDay"></el-input>
+                </el-col>
+            </el-form-item>
+            <el-form-item :label-width="formLabelWidth" label="移动目录"
+                          v-if="room.deleteType==4||room.deleteType==5||room.deleteType==6||room.deleteType==7||room.deleteType==8||room.deleteType==10||room.deleteType==11 ">
+                <el-col :span="12">
+                    <el-input autocomplete="off" placeholder="如 /complete 容器环境需要映射该目录到主机内"
+                              v-model="room.moveDir"></el-input>
+                </el-col>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="是否上传">
                 <el-select placeholder="请选择" v-model="room.upload">
                     <el-option label="是" :value="true"></el-option>
                     <el-option label="否" :value="false"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item :label-width="formLabelWidth" label="是否发送弹幕">
+                <el-select placeholder="请选择" v-model="room.sendDm">
+                    <el-option :value="true" label="是"></el-option>
+                    <el-option :value="false" label="否"></el-option>
                 </el-select>
             </el-form-item>
             <el-form-item :label-width="formLabelWidth" label="上传用户">
@@ -244,10 +340,57 @@
             <el-button @click="addRoomF()" type="primary">确 定</el-button>
         </div>
     </el-dialog>
+    <el-dialog :visible.sync="exportConfigDialog" title="导出配置">
+        <el-form :model="exportConfig">
+            <el-form-item :label-width="formLabelWidth" label="导出选项">
+                <el-checkbox v-model="exportConfig.exportRoom">导出房间信息</el-checkbox>
+                <el-checkbox v-model="exportConfig.exportUser">导出用户信息</el-checkbox>
+                <el-checkbox v-model="exportConfig.exportHistory">导出录制历史信息</el-checkbox>
+            </el-form-item>
+        </el-form>
+        <div class="dialog-footer" slot="footer">
+            <el-button @click="exportConfigDialog = false">取 消</el-button>
+            <el-button @click="exportConfigF()" type="primary">确 定</el-button>
+        </div>
+    </el-dialog>
+    <el-dialog :visible.sync="editLiveMsgSettingVisible" title="弹幕过滤">
+        <el-form :model="room">
+            <el-form-item label="弹幕重复过滤" label-width="300">
+                <el-select placeholder="请选择" v-model="room.dmDistinct">
+                    <el-option :value="false" label="不过滤"></el-option>
+                    <el-option :value="true" label="过滤"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="粉丝勋章屏蔽(需录制原始数据生效)" label-width="300">
+                <el-select placeholder="请选择" v-model="room.dmFanMedal">
+                    <el-option :value="0" label="不过滤"></el-option>
+                    <el-option :value="1" label="佩戴粉丝勋章"></el-option>
+                    <el-option :value="2" label="佩戴主播粉丝勋章"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="用户ul等级(佩戴勋章的弹幕无效)" label-width="300">
+                <el-col :span="8">
+                    <el-input autocomplete="off" type="number" v-model="room.dmUlLevel"></el-input>
+                </el-col>
+            </el-form-item>
+            <el-form-item label="关键词屏蔽(一行一个)" label-width="300">
+                <el-col :span="8">
+                    <el-input :rows="2" autocomplete="off"
+                              autosize
+                              type="textarea" v-model="room.dmKeywordBlacklist"></el-input>
+                </el-col>
+            </el-form-item>
+        </el-form>
+        <div class="dialog-footer" slot="footer">
+            <el-button @click="editLiveMsgSettingVisible = false">取 消</el-button>
+            <el-button @click="editLiveMsgSetting()" type="primary">确 定</el-button>
+        </div>
+    </el-dialog>
 
     <el-dialog :visible.sync="wxDialogVisible" title="微信关注扫码获取uid">
         <el-image
-                src="https://wxpusher.zjiecode.com/api/qrcode/gg2nIKVGMMp1paStVFVtFWrdoQFWHCymwGVXXTStk5c4k8Dp4DSQFNRJAKwtLZ7G.jpg" fit="fill"
+                src="https://wxpusher.zjiecode.com/api/qrcode/gg2nIKVGMMp1paStVFVtFWrdoQFWHCymwGVXXTStk5c4k8Dp4DSQFNRJAKwtLZ7G.jpg"
+                fit="fill"
                 justify="center"
                 style="width: 250px; height: 250px"></el-image>
         <div class="dialog-footer" slot="footer">
@@ -259,6 +402,7 @@
     new Vue({
         el: '#roomTable',
         data: {
+            loading: false,
             typeList: [
                 {
                     "id": 160,
@@ -1728,15 +1872,23 @@
             dialogFormVisible: false,
             wxDialogVisible: false,
             addRoomDialog: false,
+            exportConfigDialog: false,
+            editLiveMsgSettingVisible: false,
             room: {},
             addRoom: {},
+            exportConfig: {},
             tableData: [],
+            lines: [],
             users: []
         },
         methods: {
             handleEdit: function (index, row) {
                 this.room = row;
                 this.dialogFormVisible = true;
+            },
+            handleEeditLiveMsg: function (index, row) {
+                this.room = row;
+                this.editLiveMsgSettingVisible = true;
             },
             updateRoom: function () {
                 let _this = this;
@@ -1766,6 +1918,55 @@
                             type: data.type
                         });
                         _this.addRoomDialog = false;
+                        _this.initTable();
+                    }
+                });
+            },
+            exportConfigF: function () {
+                let _this = this;
+                $.ajax({
+                    url: '/room/exportConfig',
+                    contentType: 'application/json;charset=utf-8',
+                    type: 'post',
+                    data: JSON.stringify(_this.exportConfig),
+                    dataType: 'json',
+                    success: function (data) {
+                        // get the current date and time
+                        var now = new Date();
+
+                        // format the date and time using Intl.DateTimeFormat API
+                        var dateString = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+                        var timeString = new Intl.DateTimeFormat('zh-CN', { hour: 'numeric', minute: 'numeric' }).format(now);
+
+                        // construct the file name using the formatted date and time
+                        var fileName = 'biliupForJavaConfig_' + dateString.replace(/\//g, '年') + timeString.replace(':', '点') + '分.json';
+
+                        var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+
+                        // create a hidden link
+                        var link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(blob);
+                        link.download = fileName;
+                        link.click();
+                        window.URL.revokeObjectURL(link.href);
+                        _this.exportConfigDialog = false;
+                    }
+                });
+            },
+            editLiveMsgSetting: function () {
+                let _this = this;
+                $.ajax({
+                    url: '/room/editLiveMsgSetting',
+                    contentType: 'application/json;charset=utf-8',
+                    type: 'post',
+                    data: JSON.stringify(_this.room),
+                    dataType: 'json',
+                    success: function (data) {
+                        _this.$message({
+                            message: data.msg,
+                            type: data.type
+                        });
+                        _this.editLiveMsgSettingVisible = false;
                         _this.initTable();
                     }
                 });
@@ -1823,23 +2024,35 @@
                 }
                 return isImg && isLt2M;
             },
+            uploadSuccess: function () {
+                this.$message({
+                    message: '导入成功',
+                    type: 'success'
+                });
+                this.initTable();
+            },
             initTable: function () {
                 let _this = this;
+                _this.loading = true;
                 $.ajax({
                     url: '/room',
                     type: 'post',
                     dataType: 'json',
                     success: function (data) {
-                        data.forEach(room =>{
-                            if(room.coverUrl === 'live'){
+                        data.forEach(room => {
+                            if (room.coverUrl === 'live') {
                                 room.coverType = 'live';
-                            }else if(typeof(room.coverUrl)=='string' && room.coverUrl.startsWith("http")){
+                            } else if (typeof (room.coverUrl) == 'string' && room.coverUrl.startsWith("http")) {
                                 room.coverType = 'diy';
-                            }else {
+                            } else {
                                 room.coverType = 'default';
                             }
                         })
                         _this.tableData = data;
+                        _this.loading = false;
+                    },
+                    error: function () {
+                        _this.loading = false;
                     }
                 });
             }
@@ -1852,6 +2065,14 @@
                 dataType: 'json',
                 success: function (data) {
                     _this.users = data;
+                }
+            });
+            $.ajax({
+                url: '/room/lines',
+                type: 'get',
+                dataType: 'json',
+                success: function (data) {
+                    _this.lines = data;
                 }
             });
             this.initTable();
@@ -1882,9 +2103,11 @@
         position: relative;
         overflow: hidden;
     }
+
     .avatar-uploader .el-upload:hover {
         border-color: #409EFF;
     }
+
     .avatar-uploader-icon {
         font-size: 28px;
         color: #8c939d;
@@ -1893,6 +2116,7 @@
         line-height: 178px;
         text-align: center;
     }
+
     .avatar {
         width: 178px;
         height: 178px;

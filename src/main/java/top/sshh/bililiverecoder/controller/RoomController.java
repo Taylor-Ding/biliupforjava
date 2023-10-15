@@ -1,19 +1,24 @@
 package top.sshh.bililiverecoder.controller;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import com.jayway.jsonpath.JsonPath;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import top.sshh.bililiverecoder.entity.BiliBiliUser;
-import top.sshh.bililiverecoder.entity.RecordRoom;
-import top.sshh.bililiverecoder.repo.BiliUserRepository;
-import top.sshh.bililiverecoder.repo.RecordRoomRepository;
+import top.sshh.bililiverecoder.entity.*;
+import top.sshh.bililiverecoder.repo.*;
 import top.sshh.bililiverecoder.util.BiliApi;
+import top.sshh.bililiverecoder.util.UploadEnums;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -27,6 +32,12 @@ public class RoomController {
     @Autowired
     private BiliUserRepository userRepository;
 
+    @Autowired
+    private RecordHistoryRepository historyRepository;
+
+    @Autowired
+    private RecordHistoryPartRepository partRepository;
+
 
     @PostMapping
     public List<RecordRoom> list() {
@@ -34,6 +45,116 @@ public class RoomController {
         List<RecordRoom> list = new ArrayList<>();
         roomIterator.forEachRemaining(list::add);
         return list;
+    }
+
+
+    @PostMapping("/exportConfig")
+    public void exportConfig(@RequestBody ExportConfigParams params, HttpServletResponse response) throws IOException {
+        Map<String,Object> map = new HashMap<>();
+        if(params.isExportRoom()){
+            List<RecordRoom> roomList = this.list();
+            map.put("roomList",roomList);
+        }
+        if(params.isExportUser()){
+            List<BiliBiliUser> userList = new ArrayList<>();
+            Iterator<BiliBiliUser> userIterator = userRepository.findAll().iterator();
+            userIterator.forEachRemaining(userList::add);
+            map.put("userList",userList);
+        }
+        if(params.isExportHistory()){
+            List<RecordHistory> historyList = new ArrayList<>();
+            Iterator<RecordHistory> historyIterator = historyRepository.findAll().iterator();
+            historyIterator.forEachRemaining(historyList::add);
+            map.put("historyList",historyList);
+            List<RecordHistoryPart> partList = new ArrayList<>();
+            Iterator<RecordHistoryPart> partIterator = partRepository.findAll().iterator();
+            partIterator.forEachRemaining(partList::add);
+            map.put("partList",partList);
+        }
+        String jsonString = JSON.toJSONString(map);
+        String timeString = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日HH点mm分"));
+        // 构造响应头，指定文件名，并将文件名进行URL编码
+        String encodedFilename = URLEncoder.encode("biliupForJavaConfig_"+timeString+".json", StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+
+        response.setContentType("application/json");
+        response.setHeader("Content-Disposition", "attachment; filename="+encodedFilename);
+        // 将JSON字符串写入到响应输出流中
+        OutputStream out = response.getOutputStream();
+        out.write(jsonString.getBytes());
+        out.flush();
+        out.close();
+    }
+
+    @PostMapping("/uploadConfig")
+    public void uploadConfig(@RequestParam("file") MultipartFile file) throws IOException {
+        // 获取上传的文件内容
+        byte[] bytes = file.getBytes();
+        // 将文件内容转换为JSON字符串
+        String json = new String(bytes);
+
+        // 将JSON字符串转换为Map对象
+        Map<String,Object> configMap = JSON.parseObject(json, new TypeReference<>() {
+        });
+        List<RecordRoom> roomList = JSON.parseObject(JSON.toJSONString(configMap.get("roomList")), new TypeReference<>() {});
+        List<BiliBiliUser> userList = JSON.parseObject(JSON.toJSONString(configMap.get("userList")), new TypeReference<>() {});
+        List<RecordHistory> historyList = JSON.parseObject(JSON.toJSONString(configMap.get("historyList")), new TypeReference<>() {});
+        List<RecordHistoryPart> partList = JSON.parseObject(JSON.toJSONString(configMap.get("partList")), new TypeReference<>() {});
+
+
+        Map<Long,Long> userIdConverMap = new HashMap<>();
+        if(userList != null && userList.size()>0){
+            for (BiliBiliUser user : userList) {
+                Long id = user.getId();
+                user.setId(null);
+                BiliBiliUser dbUser = userRepository.findByUid(user.getUid());
+                if(dbUser != null){
+                    user.setId(dbUser.getId());
+                }
+                userRepository.save(user);
+                userIdConverMap.put(id,user.getId());
+            }
+            System.out.println("导入用户配置成功，一共"+userList.size()+"条");
+        }
+        if(roomList != null && roomList.size()>0){
+            for (RecordRoom room : roomList) {
+                room.setId(null);
+                room.setUploadUserId(userIdConverMap.get(room.getUploadUserId()));
+                RecordRoom dbRoom = roomRepository.findByRoomId(room.getRoomId());
+                if(dbRoom != null){
+                    room.setId(dbRoom.getId());
+                }
+                roomRepository.save(room);
+            }
+            System.out.println("导入房间配置成功，一共"+roomList.size()+"条");
+        }
+        Map<Long,Long> historyIdConverMap = new HashMap<>();
+        if(historyList != null && historyList.size()>0){
+            for (RecordHistory history : historyList) {
+                Long oldId = history.getId();
+                history.setId(null);
+                RecordHistory dbHistory = historyRepository.findBySessionId(history.getSessionId());
+                if(dbHistory != null){
+                    history.setId(dbHistory.getId());
+                }
+                historyRepository.save(history);
+                historyIdConverMap.put(oldId,history.getId());
+            }
+            System.out.println("导入录制历史信息成功，一共"+historyList.size()+"条");
+        }
+        if(partList != null && partList.size()>0){
+            for (RecordHistoryPart part : partList) {
+                part.setId(null);
+                RecordHistoryPart dbPart = partRepository.findByFilePath(part.getFilePath());
+                if(dbPart != null){
+                    part.setId(dbPart.getId());
+                }
+                part.setHistoryId(historyIdConverMap.get(part.getHistoryId()));
+                partRepository.save(part);
+            }
+            System.out.println("导入分P数据成功，一共"+partList.size()+"条");
+        }
+        // 在控制台输出转换后的Map对象
+        System.out.println("导入全部配置文件成功!");
     }
 
     @PostMapping("/update")
@@ -48,13 +169,33 @@ public class RoomController {
             dbRoom.setTitleTemplate(room.getTitleTemplate());
             dbRoom.setPartTitleTemplate(room.getPartTitleTemplate());
             dbRoom.setDescTemplate(room.getDescTemplate());
+            dbRoom.setDynamicTemplate(room.getDynamicTemplate());
             dbRoom.setCopyright(room.getCopyright());
+            dbRoom.setLine(room.getLine());
             dbRoom.setCoverUrl(room.getCoverUrl());
             dbRoom.setWxuid(room.getWxuid());
             dbRoom.setPushMsgTags(room.getPushMsgTags());
             dbRoom.setFileSizeLimit(room.getFileSizeLimit());
             dbRoom.setDurationLimit(room.getDurationLimit());
             dbRoom.setDeleteType(room.getDeleteType());
+            dbRoom.setDeleteDay(room.getDeleteDay());
+            dbRoom.setMoveDir(room.getMoveDir());
+            dbRoom.setSendDm(room.getSendDm());
+            roomRepository.save(dbRoom);
+            return true;
+        }
+        return false;
+    }
+
+    @PostMapping("/editLiveMsgSetting")
+    public boolean editLiveMsgSetting(@RequestBody RecordRoom room) {
+        Optional<RecordRoom> roomOptional = roomRepository.findById(room.getId());
+        if (roomOptional.isPresent()) {
+            RecordRoom dbRoom = roomOptional.get();
+            dbRoom.setDmDistinct(room.getDmDistinct());
+            dbRoom.setDmFanMedal(room.getDmFanMedal());
+            dbRoom.setDmUlLevel(room.getDmUlLevel());
+            dbRoom.setDmKeywordBlacklist(room.getDmKeywordBlacklist());
             roomRepository.save(dbRoom);
             return true;
         }
@@ -182,6 +323,11 @@ public class RoomController {
             result.put("msg", "房间不存在");
             return result;
         }
+    }
+
+    @GetMapping("/lines")
+    public UploadEnums[] lines() {
+        return UploadEnums.values();
     }
 
     @GetMapping("/verification")

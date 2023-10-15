@@ -53,17 +53,19 @@
         </el-form-item>
     </el-form>
     <el-table
+            v-loading="loading"
             :data="tableData"
+            height="calc(100vh - 230px )"
             style="width: 100%">
         <el-table-column
                 label="id"
                 prop="id"
-                width="80">
+                width="60">
         </el-table-column>
         <el-table-column
-                label="房间名称"
+                label="主播名"
                 prop="roomName"
-                width="120">
+                width="80">
         </el-table-column>
         <el-table-column
                 label="bv号"
@@ -78,9 +80,17 @@
         <el-table-column
                 label="文件大小"
                 prop="fileSize"
-                width="120">
+                width="100">
             <template slot-scope="scope">
                 {{(scope.row.fileSize/1024/1024/1024).toFixed(2)}}(GB)
+            </template>
+        </el-table-column>
+        <el-table-column
+                label="视频总时长"
+                prop="partDuration"
+                width="120">
+            <template slot-scope="scope">
+                {{Math.floor(scope.row.partDuration/60/60)}}小时{{((scope.row.partDuration/60)%60).toFixed(0)}}分钟
             </template>
         </el-table-column>
         <el-table-column
@@ -91,6 +101,11 @@
         <el-table-column
                 label="录制中的分p数量"
                 prop="recordPartCount"
+                width="80">
+        </el-table-column>
+        <el-table-column
+                label="已上传的分p数量"
+                prop="uploadPartCount"
                 width="80">
         </el-table-column>
         <el-table-column
@@ -150,12 +165,27 @@
                 width="170">
         </el-table-column>
         <el-table-column label="操作"
-                         width="200">
+                         width="250">
             <template slot-scope="scope">
                 <el-button
                         @click="handleEdit(scope.$index, scope.row)" size="mini"
                         type="primary">编辑
                 </el-button>
+                <el-popconfirm
+                        @confirm="rePublish(scope.row.id)"
+                        title="确定重新上传转码失败部分吗？">
+                    <el-tooltip class="item" content="会重新上传转码失败的分p" effect="dark"
+                                placement="top" slot="reference">
+                        <el-button
+                                size="mini"
+                                type="danger">转码失败修复
+                        </el-button>
+                    </el-tooltip>
+                </el-popconfirm>
+                <!--                <el-button-->
+                <!--                        @click="uploadEdit(scope.$index, scope.row)" size="mini"-->
+                <!--                        type="primary">云剪辑-->
+                <!--                </el-button>-->
                 <el-popover
                         placement="right"
                         width="400"
@@ -188,15 +218,17 @@
                             </el-popconfirm>
                         </el-col>
                     </el-row>
-                    <el-row type="flex" justify="space-around">
+                    <el-row justify="space-around" type="flex">
+                        <el-col :span="6">
 
-                        <el-col :span="8">
                             <el-popconfirm
                                     @confirm="updatePublishStatus(scope.row.id)"
                                     title="确定重置为未上传发布吗？">
-                                <el-tooltip slot="reference" class="item" effect="dark"
+                                <el-tooltip class="item"
                                             content="把状态修改为未发布,分p全部未上传状态,重置后点击触发发布事件会重新投稿"
-                                            placement="top">
+                                            effect="dark"
+                                            placement="top"
+                                            slot="reference">
                                     <el-button size="mini"
                                                type="danger">重置为未上传发布
                                     </el-button>
@@ -205,12 +237,12 @@
                         </el-col>
                         <el-col :span="5">
                             <el-popconfirm
-                                    @confirm="rePublish(scope.row.id)"
-                                    title="确定更新稿件吗？">
-                                <el-tooltip slot="reference" class="item" effect="dark"
-                                            content="会重新上传稿件中被删除的分p" placement="top">
+                                    @confirm="reloadHistoryMsg(scope.row.id)"
+                                    title="确定重新加载弹幕吗？">
+                                <el-tooltip class="item" content="会重新按设置的弹幕规则加载弹幕，并且把弹幕都重置从未发送" effect="dark"
+                                            placement="top" slot="reference">
                                     <el-button size="mini"
-                                               type="danger">更新稿件
+                                               type="danger">重新加载弹幕
                                     </el-button>
                                 </el-tooltip>
                             </el-popconfirm>
@@ -229,7 +261,7 @@
                 </el-popover>
                 <el-popconfirm
                         @confirm="deleteHistory(scope.row.id)"
-                        title="确定删除吗？">
+                        title="确定删除吗？会同时删除录制文件">
                     <el-button slot="reference" size="mini"
                                type="danger">删除
                     </el-button>
@@ -237,7 +269,18 @@
             </template>
         </el-table-column>
     </el-table>
-
+    <template>
+        <div class="block">
+            <el-pagination
+                    @size-change="handleSizeChange"
+                    @current-change="handleCurrentChange"
+                    :page-sizes="[5, 10, 25, 50, 100]"
+                    :page-size=5
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total=total>
+            </el-pagination>
+        </div>
+    </template>
     <el-dialog :visible.sync="editDialogFormVisible" title="用户信息">
         <el-form :model="history">
             <el-form-item label="是否上传" label-width="80px">
@@ -258,6 +301,21 @@
             <el-button @click="updateHistory()" type="primary">确 定</el-button>
         </div>
     </el-dialog>
+
+    <!--    <el-dialog :visible.sync="uploadEditDialogFormVisible" title="上传到云剪辑">-->
+    <!--        <el-select v-model="uploadEditPartId" placeholder="请选择">-->
+    <!--            <el-option-->
+    <!--                    v-for="item in partData"-->
+    <!--                    :key="item.id"-->
+    <!--                    :label="item.title"-->
+    <!--                    :value="item.id">-->
+    <!--            </el-option>-->
+    <!--        </el-select>-->
+    <!--        <div class="dialog-footer" slot="footer">-->
+    <!--            <el-button @click="uploadEditDialogFormVisible = false">取 消</el-button>-->
+    <!--            <el-button @click="uploadEditPart();uploadEditDialogFormVisible = false" type="primary">确 定</el-button>-->
+    <!--        </div>-->
+    <!--    </el-dialog>-->
 </div>
 <script>
     new Vue({
@@ -265,16 +323,46 @@
         data: {
             formLabelWidth: '150px',
             tableData: [],
+            total: 0,
+            partData: [],
             editDialogFormVisible: false,
+            uploadEditDialogFormVisible: false,
             form: {},
-            history: {}
+            history:{},
+            uploadEditPartId:null,
+            loading: false
         },
         methods: {
             handleEdit: function (index, row) {
                 this.history = row;
                 this.editDialogFormVisible = true;
             },
+            uploadEdit: function (index, row) {
+                this.uploadEditPartId = null;
+                let _this = this;
+                this.history = row;
+                this.uploadEditDialogFormVisible = true;
+                $.ajax({
+                    url: '/part/list/'+row.id,
+                    contentType: 'application/json;charset=utf-8',
+                    type: 'post',
+                    dataType: 'json',
+                    success: function (data) {
+                        console.log(data)
+                        _this.partData = data;
+                    }
+                });
+            },
+            handleSizeChange(val) {
+                this.form.pageSize=val;
+                this.initTable();
+            },
+            handleCurrentChange(val) {
+                this.form.current=val;
+                this.initTable();
+            },
             initTable: function () {
+                this.loading = true;
                 let _this = this;
                 $.ajax({
                     url: '/history/list',
@@ -283,8 +371,12 @@
                     data: JSON.stringify(_this.form),
                     dataType: 'json',
                     success: function (data) {
-                        console.info(data)
-                        _this.tableData = data;
+                        _this.tableData = data.data;
+                        _this.total = data.total;
+                        _this.loading = false;
+                    },
+                    error: function () {
+                        _this.loading = false;
                     }
                 });
             },
@@ -296,6 +388,21 @@
                     type: 'post',
                     data: JSON.stringify(_this.history),
                     dataType: 'json',
+                    success: function (data) {
+                        _this.$message({
+                            message: data.msg,
+                            type: data.type
+                        });
+                        _this.initTable();
+                    }
+                });
+            },
+            uploadEditPart: function () {
+                let _this = this;
+                $.ajax({
+                    url: '/part/uploadEditor/' + this.uploadEditPartId,
+                    contentType: 'application/json;charset=utf-8',
+                    type: 'get',
                     success: function (data) {
                         _this.$message({
                             message: data.msg,
@@ -389,6 +496,22 @@
                 let _this = this;
                 $.ajax({
                     url: '/history/deleteMsg/' + id,
+                    contentType: 'application/json;charset=utf-8',
+                    type: 'get',
+                    dataType: 'json',
+                    success: function (data) {
+                        _this.$message({
+                            message: data.msg,
+                            type: data.type
+                        });
+                        _this.initTable();
+                    }
+                });
+            },
+            reloadHistoryMsg: function (id) {
+                let _this = this;
+                $.ajax({
+                    url: '/history/reloadMsg/' + id,
                     contentType: 'application/json;charset=utf-8',
                     type: 'get',
                     dataType: 'json',

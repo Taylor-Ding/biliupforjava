@@ -1,9 +1,6 @@
 package top.sshh.bililiverecoder.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,7 +10,7 @@ import java.time.LocalDateTime;
 public class BiliBiliUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long uid;
@@ -23,6 +20,7 @@ public class BiliBiliUser {
     private String accessToken;
     private String refreshToken;
 
+    @Column(length = 2100)
     private String cookies;
 
     private LocalDateTime updateTime;
@@ -32,5 +30,8 @@ public class BiliBiliUser {
      */
     private boolean login;
 
+    /**
+     * 是否启用弹幕
+     */
     private boolean enable;
 }

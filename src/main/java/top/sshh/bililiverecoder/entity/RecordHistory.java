@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class RecordHistory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String roomId;
@@ -62,6 +62,12 @@ public class RecordHistory {
 
     @Transient
     private int partCount;
+
+    @Transient
+    private float partDuration;
+
+    @Transient
+    private int uploadPartCount;
 
     @Transient
     private int recordPartCount;

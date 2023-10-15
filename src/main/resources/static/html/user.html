@@ -1,7 +1,9 @@
 <div class="container" id="userTable">
     <el-button @click="getLoginImage();dialogLoginVisible = true" type="primary">登录</el-button>
     <el-table
+            v-loading="loading"
             :data="tableData"
+            height="calc(100vh - 150px )"
             style="width: 100%">
         <el-table-column
                 label="用户id"
@@ -23,7 +25,7 @@
             </template>
         </el-table-column>
         <el-table-column
-                label="是否启用"
+                label="发送弹幕"
                 prop="enable"
                 width="120">
             <template slot-scope="scope">
@@ -102,17 +104,23 @@
             dialogLoginVisible: false,
             tableData: [],
             user: {},
-            image: ''
+            image: '',
+            loading:false
         },
         methods: {
             initTable: function () {
                 let _this = this;
+                _this.loading = true;
                 $.ajax({
                     url: '/biliUser/list',
                     type: 'get',
                     dataType: 'json',
                     success: function (data) {
                         _this.tableData = data;
+                        _this.loading = false;
+                    },
+                    error:function () {
+                        _this.loading = false;
                     }
                 });
             },

@@ -61,7 +61,7 @@ public class BiliUserController {
                         JSONArray cookies = JSON.parseArray(JsonPath.read(loginResp, "data.cookie_info.cookies").toString());
                         StringBuilder cookieString = new StringBuilder();
                         for (Object object : cookies) {
-                            JSONObject cookie = (JSONObject)object;
+                            JSONObject cookie = (JSONObject) object;
                             cookieString.append(cookie.get("name").toString());
                             cookieString.append(":");
                             cookieString.append(cookie.get("value").toString());
@@ -92,6 +92,8 @@ public class BiliUserController {
     public List<BiliBiliUser> listBillUser() {
         List<BiliBiliUser> list = new ArrayList<>();
         for (BiliBiliUser biliBiliUser : biliUserRepository.findAll()) {
+            biliBiliUser.setAccessToken(null);
+            biliBiliUser.setRefreshToken(null);
             list.add(biliBiliUser);
         }
         return list;
