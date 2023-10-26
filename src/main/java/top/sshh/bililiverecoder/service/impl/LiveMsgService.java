@@ -98,7 +98,7 @@ public class LiveMsgService {
             EXCLUSION_DM = new String[0];
         }
         String filePath = part.getFilePath();
-        filePath = filePath.replaceAll(".flv", ".xml");
+        filePath = filePath.substring(0, filePath.lastIndexOf(".")) + ".xml";
         File file = new File(filePath);
         boolean exists = file.exists();
         if (exists) {
