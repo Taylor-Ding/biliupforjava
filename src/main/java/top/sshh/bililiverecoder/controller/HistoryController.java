@@ -230,7 +230,7 @@ public class HistoryController {
             List<RecordHistoryPart> parts = partRepository.findByHistoryIdOrderByStartTimeAsc(history.getId());
             for (RecordHistoryPart part : parts) {
                 String filePath = part.getFilePath();
-                filePath = filePath.replaceAll(".flv", ".xml");
+                filePath = filePath.substring(0, filePath.lastIndexOf(".")) + ".xml";
                 File file = new File(filePath);
                 if (file.exists()) {
                     List<LiveMsg> liveMsgs = msgRepository.queryByCid(part.getCid());
