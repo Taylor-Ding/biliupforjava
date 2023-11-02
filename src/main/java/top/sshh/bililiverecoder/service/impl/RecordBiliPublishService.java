@@ -187,7 +187,7 @@ public class RecordBiliPublishService {
             videoUploadDto.setDesc(this.template(room.getDescTemplate(), map));
             videoUploadDto.setDynamic(this.template(room.getDescTemplate(), map));
             videoUploadDto.setVideos(dtos);
-            videoUploadDto.setTag(room.getTags());
+            videoUploadDto.setTag(this.template(room.getTags(), map));
             videoUploadDto.setAid(Integer.valueOf(history.getAvId()));
             String republishRes = BiliApi.editPublish(biliBiliUser, videoUploadDto);
             log.info("重新投稿={}", republishRes);
