@@ -56,12 +56,12 @@
         </el-table-column>
     </el-table>
 
-    <el-dialog :visible.sync="dialogLoginVisible" title="登录">
+    <el-dialog :visible.sync="dialogLoginVisible" @close="try{loginReturnAjax.abort();}catch(e){}" title="登录">
         <div class="dialog-footer" slot="footer">
 
             <el-row class="row-bg" justify="center" type="flex">
                 <el-col :span="10">
-                    <span>登录成功会请自行刷新二维码(有效期60秒)</span>
+                    <span>登录成功请自行刷新二维码(有效期五分钟)</span>
                 </el-col>
             </el-row>
 
@@ -76,7 +76,7 @@
             </el-row>
 
             <el-button @click="getLoginImage();initTable();" type="primary">刷新</el-button>
-            <el-button @click="dialogLoginVisible = false;initTable();">关闭</el-button>
+            <el-button @click="dialogLoginVisible = false;initTable();loginReturnAjax.abort();">关闭</el-button>
         </div>
     </el-dialog>
 
@@ -105,7 +105,8 @@
             tableData: [],
             user: {},
             image: '',
-            loading:false
+            loginReturnAjax: {},
+            loading: false
         },
         methods: {
             initTable: function () {
@@ -126,11 +127,30 @@
             },
             getLoginImage: function () {
                 let _this = this;
+                try {
+                    _this.loginReturnAjax.abort();
+                } catch (e) {
+                }
+                ;
+
                 $.ajax({
                     url: '/biliUser/login',
                     type: 'get',
                     success: function (data) {
                         _this.image = data;
+                        var param = {key: _this.image.substring(_this.image.length - 100)};
+                        _this.loginReturnAjax = $.ajax({
+                            url: '/biliUser/loginReturn',
+                            type: 'get',
+                            data: param,
+                            success: function (returnData) {
+                                _this.$message({
+                                    message: returnData.msg,
+                                    type: returnData.type
+                                });
+                                _this.dialogLoginVisible = false;
+                            }
+                        });
                     }
                 });
             },
@@ -147,6 +167,7 @@
                     data: JSON.stringify(_this.user),
                     dataType: 'json',
                     success: function (data) {
+                        _this.initTable();
                         _this.dialogFormVisible = false;
                     }
                 });
