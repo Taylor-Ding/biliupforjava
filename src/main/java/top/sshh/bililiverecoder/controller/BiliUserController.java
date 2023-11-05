@@ -22,6 +22,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.*;
 
 @Slf4j
 @RestController
@@ -30,6 +31,9 @@ public class BiliUserController {
 
     @Autowired
     BiliUserRepository biliUserRepository;
+
+    private final Map<String, Future<String>> futureMap = new HashMap<>();
+    ExecutorService service = Executors.newFixedThreadPool(10);
 
     @GetMapping("/login")
     public String loginUser() throws Exception {
@@ -46,11 +50,12 @@ public class BiliUserController {
         byte[] bytes = Base64.encodeBase64(stream.toByteArray());
         // 偷懒直接new一个Thread
         // new thread to check login status
-        new Thread(() -> {
+        Callable<String> callable = () -> {
             try {
-                Thread.sleep(10000);
-                for (int i = 0; i < 6; i++) {
-                    String loginResp = BiliApi.loginOnTV(s.getData().getAuth_code());
+                Thread.sleep(5000);
+                String loginResp = "";
+                for (int i = 0; i < 60; i++) {
+                    loginResp = BiliApi.loginOnTV(s.getData().getAuth_code());
                     Integer code = JsonPath.read(loginResp, "code");
                     if (code == 0) {
                         BiliSessionDto dto = JSON.parseObject(loginResp).getObject("data", BiliSessionDto.class);
@@ -77,15 +82,39 @@ public class BiliUserController {
                         biliUser.setUname(JsonPath.read(userInfo, "data.uname"));
                         log.info("{} 登录成功!!!", biliUser.getUname());
                         biliUserRepository.save(biliUser);
-                        return;
+                        return "登录成功";
+                    } else if (code == 86038) {
+                        log.info("扫码超时");
+                        return JsonPath.read(loginResp, "message");
                     }
-                    Thread.sleep(10000);
+                    Thread.sleep(5000);
 
                 }
+                return "登录失败，" + JsonPath.read(loginResp, "message");
             } catch (InterruptedException e) {
+                return "登录失败";
             }
-        }).start();
-        return new String(bytes);
+        };
+        Future<String> submit = service.submit(callable);
+        String imagesBase64 = new String(bytes);
+        futureMap.put(imagesBase64.substring(imagesBase64.length() - 100), submit);
+        return imagesBase64;
+    }
+
+    @GetMapping("loginReturn")
+    public Map<String, String> loginReturn(@RequestParam String key) throws ExecutionException, InterruptedException, TimeoutException {
+        Future<String> stringFuture = futureMap.get(key);
+        Map<String, String> result = new HashMap<>();
+        if (stringFuture == null) {
+            result.put("type", "warning");
+            result.put("msg", "登录失败");
+            return result;
+        } else {
+            futureMap.remove(key);
+            result.put("type", "warning");
+            result.put("msg", stringFuture.get(5, TimeUnit.MINUTES));
+            return result;
+        }
     }
 
     @GetMapping("/list")
