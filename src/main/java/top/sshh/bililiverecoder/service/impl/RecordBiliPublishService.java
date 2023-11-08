@@ -589,11 +589,11 @@ public class RecordBiliPublishService {
     }
 
     private String template(String template, Map<String, Object> map) {
-        template = template.replace("${uname}", map.getOrDefault("${uname}", "").toString())
-                .replace("${title}", map.getOrDefault("${title}", "").toString())
-                .replace("${index}", map.getOrDefault("${index}", "").toString())
-                .replace("${areaName}", map.getOrDefault("${areaName}", "").toString())
-                .replace("${roomId}", map.getOrDefault("${roomId}", "").toString());
+        template = template.replace("${uname}", map.get("${uname}") != null ? map.get("${uname}").toString() : "")
+                .replace("${title}", map.get("${title}") != null ? map.get("${title}").toString() : "")
+                .replace("${index}", map.get("${index}") != null ? map.get("${index}").toString() : "")
+                .replace("${areaName}", map.get("${areaName}") != null ? map.get("${areaName}").toString() : "")
+                .replace("${roomId}", map.get("${roomId}") != null ? map.get("${roomId}").toString() : "");
         if (template.contains("${")) {
             LocalDateTime localDateTime = (LocalDateTime) map.get("date");
             String date = template.substring(template.indexOf("${"), template.indexOf("}") + 1);
