@@ -131,7 +131,6 @@
                     _this.loginReturnAjax.abort();
                 } catch (e) {
                 }
-                ;
 
                 $.ajax({
                     url: '/biliUser/login',
@@ -148,6 +147,7 @@
                                     message: returnData.msg,
                                     type: returnData.type
                                 });
+                                _this.initTable();
                                 _this.dialogLoginVisible = false;
                             }
                         });
