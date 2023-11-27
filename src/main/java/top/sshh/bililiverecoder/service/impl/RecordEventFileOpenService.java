@@ -98,6 +98,7 @@ public class RecordEventFileOpenService implements RecordEventService {
             history.setSessionId(eventData.getSessionId());
             history.setRecording(eventData.isRecording());
             history.setStreaming(eventData.isStreaming());
+            history.setUpload(room.isUpload());
             history = historyRepository.save(history);
             room.setHistoryId(history.getId());
             room = roomRepository.save(room);
