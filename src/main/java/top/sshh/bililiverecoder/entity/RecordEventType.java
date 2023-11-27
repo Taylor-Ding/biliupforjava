@@ -16,4 +16,6 @@ public class RecordEventType {
     public static final String VideoFileCreatedEvent = "VideoFileCreatedEvent";
     public static final String FileClosed = "FileClosed";
     public static final String VideoFileCompletedEvent = "VideoFileCompletedEvent";
+
+    public static final String VideoPostprocessingCompletedEvent = "VideoPostprocessingCompletedEvent";
 }
