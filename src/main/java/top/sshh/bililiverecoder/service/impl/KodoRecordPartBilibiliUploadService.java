@@ -424,7 +424,7 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
 
             }
         } catch (Exception e) {
-            log.error("kodo上传发送错误", e);
+            log.error("kodo上传发生错误", e);
         } finally {
             TaskUtil.partUploadTask.remove(part.getId());
         }

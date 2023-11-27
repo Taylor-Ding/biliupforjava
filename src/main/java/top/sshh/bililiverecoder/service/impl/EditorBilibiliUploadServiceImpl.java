@@ -284,7 +284,7 @@ public class EditorBilibiliUploadServiceImpl implements RecordPartUploadService 
 
             }
         } catch (Exception e) {
-            log.error("云剪辑上传发送错误", e);
+            log.error("云剪辑上传发生错误", e);
         } finally {
             TaskUtil.partUploadTask.remove(part.getId());
         }

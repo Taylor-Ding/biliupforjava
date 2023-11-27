@@ -440,7 +440,7 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
 
             }
         } catch (Exception e) {
-            log.error("upos上传发送错误", e);
+            log.error("upos上传发生错误", e);
         } finally {
             TaskUtil.partUploadTask.remove(part.getId());
         }
