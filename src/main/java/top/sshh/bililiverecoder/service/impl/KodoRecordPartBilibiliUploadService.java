@@ -311,7 +311,7 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
                                     message.setUid(wxuid);
                                     WxPusher.send(message);
                                 }
-                                throw new RuntimeException(part.getFileName() + "===并发上传失败，存在异常");
+                                throw new RuntimeException(part.getFilePath() + "===并发上传失败，存在异常");
                             }
                             //通知服务器上传完成
                             Map<String, String> completeParams = new HashMap<>();
