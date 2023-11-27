@@ -30,6 +30,8 @@ public class RecordEventFactory {
     @Autowired
     private RecordEventFileClosedService recordEventFileClosedService;
     @Autowired
+    private RecordEventFilePostService recordEventFilePostService;
+    @Autowired
     private RecordEventEmptyService recordEventEmptyService;
 
     private final Map<String, BlrecRoomInfo> blrecRoomInfoMap = new HashMap<>();
@@ -47,6 +49,7 @@ public class RecordEventFactory {
             case RecordEventType.StreamEnded, RecordEventType.LiveEndedEvent -> recordEventStreamEndService;
             case RecordEventType.FileOpening, RecordEventType.VideoFileCreatedEvent -> recordEventFileOpenService;
             case RecordEventType.FileClosed, RecordEventType.VideoFileCompletedEvent -> recordEventFileClosedService;
+            case RecordEventType.VideoPostprocessingCompletedEvent -> recordEventFilePostService;
             default -> recordEventEmptyService;
         };
     }
