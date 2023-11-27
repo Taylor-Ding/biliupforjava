@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import top.sshh.bililiverecoder.entity.BlrecData;
 import top.sshh.bililiverecoder.entity.RecordEventDTO;
 import top.sshh.bililiverecoder.service.RecordEventFactory;
 
@@ -17,8 +18,21 @@ public class RecordWebHook {
 
     @PostMapping
     public void processing(@RequestBody RecordEventDTO recordEvent) {
-        log.info("收到录播姬的推送信息==> {}", JSON.toJSONString(recordEvent));
-        recordEventFactory.processing(recordEvent);
+        String lock = "";
+        if (recordEvent.getData() != null) {
+            BlrecData data = recordEvent.getData();
+            if (data.getRoomInfo() != null) {
+                lock = "blrec:" + data.getRoomInfo().getRoomId();
+            } else {
+                lock = "blrec:" + data.getRoomId();
+            }
+        } else if (recordEvent.getEventData() != null) {
+            lock = "brec:" + recordEvent.getEventData().getSessionId();
+        }
+        synchronized (lock.intern()) {
+            log.info("收到录播姬的推送信息==> {}", JSON.toJSONString(recordEvent));
+            recordEventFactory.processing(recordEvent);
+        }
     }
 
     @GetMapping
