@@ -105,8 +105,6 @@ public class RecordEventFactory {
             return;
         }
         RecordEventService eventService = this.getEventService(eventType);
-        synchronized (eventDTO.getEventData().getSessionId().intern()) {
-            eventService.processing(eventDTO);
-        }
+        eventService.processing(eventDTO);
     }
 }
