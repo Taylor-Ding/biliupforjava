@@ -296,7 +296,9 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
                                 }
 
                                 if (history.getUploadRetryCount() < 2) {
+                                    Thread.sleep(5000);
                                     uploadServiceFactory.getUploadService(room.getLine()).asyncUpload(part);
+                                    log.info("尝试重新上传{}", filePath);
                                 }
                                 //存在异常
                                 TaskUtil.partUploadTask.remove(part.getId());
