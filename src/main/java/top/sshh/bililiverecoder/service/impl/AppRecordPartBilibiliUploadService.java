@@ -345,7 +345,7 @@ public class AppRecordPartBilibiliUploadService implements RecordPartUploadServi
 
             }
         } catch (Exception e) {
-            log.error("app上传发送错误", e);
+            log.error("app上传发生错误", e);
         } finally {
             TaskUtil.partUploadTask.remove(part.getId());
         }
