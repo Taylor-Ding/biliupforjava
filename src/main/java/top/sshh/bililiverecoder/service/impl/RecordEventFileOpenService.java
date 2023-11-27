@@ -81,9 +81,12 @@ public class RecordEventFileOpenService implements RecordEventService {
             room = roomRepository.save(room);
         }
         Optional<RecordHistory> historyOptional = historyRepository.findById(room.getHistoryId());
-        RecordHistory history;
+        RecordHistory history = null;
+        if (historyOptional.isPresent()) {
+            history = historyOptional.get();
+        }
         //异常情况判断
-        if (!historyOptional.isPresent()) {
+        if (history == null || history.getEndTime().isBefore(LocalDateTime.now().minusMinutes(10L))) {
             log.error("录制异常，录制历史没有创建，可能webhook请求顺序错误");
 
             history = new RecordHistory();
@@ -98,8 +101,6 @@ public class RecordEventFileOpenService implements RecordEventService {
             history = historyRepository.save(history);
             room.setHistoryId(history.getId());
             room = roomRepository.save(room);
-        } else {
-            history = historyOptional.get();
         }
         int partCount = historyPartRepository.countByHistoryId(history.getId());
 
