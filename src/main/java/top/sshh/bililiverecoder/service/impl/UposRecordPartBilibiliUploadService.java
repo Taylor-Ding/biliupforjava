@@ -87,6 +87,7 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
 
     @Override
     public void asyncUpload(RecordHistoryPart part) {
+        part = partRepository.findById(part.getId()).get();
         log.info("partId={},异步上传任务开始==>{}", part.getId(), part.getFilePath());
         this.upload(part);
     }
@@ -305,15 +306,11 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
 
                             runnableList.stream().parallel().forEach(Runnable::run);
                             if (tryCount.get() >= 200) {
+                                part = partRepository.findById(part.getId()).get();
                                 part.setUpload(false);
+                                part.setUploadRetryCount(part.getUploadRetryCount() + 1);
                                 part = partRepository.save(part);
-                                historyOptional = historyRepository.findById(history.getId());
-                                if (historyOptional.isPresent()) {
-                                    history = historyOptional.get();
-                                    history.setUploadRetryCount(history.getUploadRetryCount() + 1);
-                                    history = historyRepository.save(history);
-                                }
-                                if (history.getUploadRetryCount() < 2) {
+                                if (part.getUploadRetryCount() < 2) {
                                     Thread.sleep(5000);
                                     uploadServiceFactory.getUploadService(room.getLine()).asyncUpload(part);
                                     log.info("尝试重新上传{}", filePath);
@@ -359,12 +356,13 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                                         }
                                         log.error("partId={},文件合并失败，准备重试", part.getId(), e);
                                     }
-                                    if (completeUploadBean != null && completeUploadBean.getOK() == 1) {
+                                    if (completeUploadBean != null && completeUploadBean.getOK() != null && completeUploadBean.getOK() == 1) {
                                         break;
                                     }
                                 }
 
-                                if (completeUploadBean.getOK() == 1) {
+                                if (completeUploadBean != null && completeUploadBean.getOK() != null && completeUploadBean.getOK() == 1) {
+                                    part = partRepository.findById(part.getId()).get();
                                     part.setUpload(true);
                                     part.setFileName(uploadBean.getFileName());
                                     part.setCid(preUploadBean.getBiz_id());
@@ -391,6 +389,7 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                                         if (files != null) {
                                             for (File file : files) {
                                                 if (!filePath.startsWith(workPath)) {
+                                                    part = partRepository.findById(part.getId()).get();
                                                     part.setFileDelete(true);
                                                     part = partRepository.save(part);
                                                     continue;
@@ -405,6 +404,7 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                                             }
                                         }
 
+                                        part = partRepository.findById(part.getId()).get();
                                         part.setFilePath(toDirPath + filePath.substring(filePath.lastIndexOf("/") + 1));
                                         part.setFileDelete(true);
                                         part = partRepository.save(part);
