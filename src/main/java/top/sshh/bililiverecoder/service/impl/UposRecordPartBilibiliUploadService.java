@@ -19,6 +19,7 @@ import top.sshh.bililiverecoder.repo.RecordHistoryPartRepository;
 import top.sshh.bililiverecoder.repo.RecordHistoryRepository;
 import top.sshh.bililiverecoder.repo.RecordRoomRepository;
 import top.sshh.bililiverecoder.service.RecordPartUploadService;
+import top.sshh.bililiverecoder.service.UploadServiceFactory;
 import top.sshh.bililiverecoder.util.TaskUtil;
 import top.sshh.bililiverecoder.util.UploadEnums;
 import top.sshh.bililiverecoder.util.bili.Cookie;
@@ -34,6 +35,7 @@ import top.sshh.bililiverecoder.util.bili.user.UserMy;
 import top.sshh.bililiverecoder.util.bili.user.UserMyRootBean;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -79,6 +81,9 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
     @Autowired
     private RecordRoomRepository roomRepository;
 
+    @Autowired
+    private UploadServiceFactory uploadServiceFactory;
+
     @Override
     public void asyncUpload(RecordHistoryPart part) {
         log.info("partId={},异步上传任务开始==>{}", part.getId(), part.getFilePath());
@@ -87,6 +92,7 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
 
     @Override
     public void upload(RecordHistoryPart part) {
+        part = partRepository.findById(part.getId()).get();
         Thread thread = TaskUtil.partUploadTask.get(part.getId());
         if (thread != null && thread != Thread.currentThread()) {
             log.info("当前线程为{} ,partId={}该文件正在被{}线程上传", Thread.currentThread(), part.getId(), thread.getName());
@@ -245,8 +251,14 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                                                     chunkParams.put("size", String.valueOf(finalChunkSize));
                                                     chunkParams.put("end", String.valueOf(endSize));
                                                 }
-                                                ChunkUploadRequest chunkUploadRequest = new ChunkUploadRequest(finalPreUploadBean, chunkParams, new RandomAccessFile(filePath, "r"));
-                                                chunkUploadRequest.getPage();
+                                                try {
+                                                    ChunkUploadRequest chunkUploadRequest = new ChunkUploadRequest(finalPreUploadBean, chunkParams, new RandomAccessFile(filePath, "r"));
+                                                    chunkUploadRequest.getPage();
+                                                } catch (FileNotFoundException fileNotFoundException) {
+                                                    tryCount.set(200);
+                                                    log.error("上传失败，{}文件不存在", filePath);
+                                                    break;
+                                                }
                                                 int count = upCount.incrementAndGet();
                                                 log.info("{}==>[{}] 上传视频part {} 进度{}/{}", Thread.currentThread().getName(), room.getTitle(),
                                                         filePath, count, chunkNum);
@@ -292,6 +304,9 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                                     history = historyOptional.get();
                                     history.setUploadRetryCount(history.getUploadRetryCount() + 1);
                                     history = historyRepository.save(history);
+                                }
+                                if (history.getUploadRetryCount() < 2) {
+                                    uploadServiceFactory.getUploadService(room.getLine()).asyncUpload(part);
                                 }
                                 //存在异常
                                 TaskUtil.partUploadTask.remove(part.getId());
