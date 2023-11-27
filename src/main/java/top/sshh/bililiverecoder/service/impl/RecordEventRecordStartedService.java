@@ -64,6 +64,8 @@ public class RecordEventRecordStartedService implements RecordEventService {
             history = new RecordHistory();
             history.setRoomId(room.getRoomId());
             history.setStartTime(now);
+            history.setUpdateTime(now);
+            history.setEndTime(now);
             history.setTitle(eventData.getTitle());
             history.setUpload(room.isUpload());
         } else {
