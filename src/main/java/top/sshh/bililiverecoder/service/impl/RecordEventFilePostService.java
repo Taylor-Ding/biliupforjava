@@ -54,6 +54,9 @@ public class RecordEventFilePostService implements RecordEventService {
         String sessionId = eventData.getSessionId();
         String relativePath = eventData.getRelativePath();
         log.info("分p录制视频文件后处理事件==>{}", relativePath);
+        if ("blrec".equals(sessionId)) {
+            relativePath = relativePath.replace(workPath, "");
+        }
         String filePath = workPath + File.separator + relativePath;
         // 正常逻辑
         String name = filePath.substring(0, filePath.lastIndexOf('.'));

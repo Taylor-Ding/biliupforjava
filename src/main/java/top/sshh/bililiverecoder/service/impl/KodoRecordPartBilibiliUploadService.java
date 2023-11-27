@@ -91,6 +91,7 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
 
     @Override
     public void asyncUpload(RecordHistoryPart part) {
+        part = partRepository.findById(part.getId()).get();
         log.info("partId={},异步上传任务开始==>{}", part.getId(), part.getFilePath());
         this.upload(part);
     }
@@ -286,16 +287,11 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
 
                             runnableList.stream().parallel().forEach(Runnable::run);
                             if (tryCount.get() >= 200) {
+                                part = partRepository.findById(part.getId()).get();
                                 part.setUpload(false);
+                                part.setUploadRetryCount(part.getUploadRetryCount() + 1);
                                 part = partRepository.save(part);
-                                historyOptional = historyRepository.findById(history.getId());
-                                if (historyOptional.isPresent()) {
-                                    history = historyOptional.get();
-                                    history.setUploadRetryCount(history.getUploadRetryCount() + 1);
-                                    history = historyRepository.save(history);
-                                }
-
-                                if (history.getUploadRetryCount() < 2) {
+                                if (part.getUploadRetryCount() < 2) {
                                     Thread.sleep(5000);
                                     uploadServiceFactory.getUploadService(room.getLine()).asyncUpload(part);
                                     log.info("尝试重新上传{}", filePath);
@@ -335,7 +331,7 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
                                 for (int i = 0; i < 5; i++) {
                                     try {
                                         checkUploadBean = checkUploadRequest.getPojo();
-                                        if (checkUploadBean != null && checkUploadBean.getOK() == 1) {
+                                        if (checkUploadBean != null && checkUploadBean.getOK() != null && checkUploadBean.getOK() == 1) {
                                             break;
                                         }
                                     } catch (Exception e) {
@@ -346,7 +342,8 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
                                     }
                                 }
 
-                                if (checkUploadBean.getOK() == 1 && completeUploadBean != null) {
+                                if (completeUploadBean != null && checkUploadBean.getOK() != null && checkUploadBean.getOK() == 1) {
+                                    part = partRepository.findById(part.getId()).get();
                                     part.setUpload(true);
                                     part.setCid(preUploadBean.getBiz_id());
                                     part.setFileName(preUploadBean.getBili_filename());
@@ -373,6 +370,7 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
                                         if (files != null) {
                                             for (File file : files) {
                                                 if (!filePath.startsWith(workPath)) {
+                                                    part = partRepository.findById(part.getId()).get();
                                                     part.setFileDelete(true);
                                                     part = partRepository.save(part);
                                                     continue;
@@ -386,7 +384,7 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
                                                 }
                                             }
                                         }
-
+                                        part = partRepository.findById(part.getId()).get();
                                         part.setFilePath(toDirPath + filePath.substring(filePath.lastIndexOf("/") + 1));
                                         part.setFileDelete(true);
                                         part = partRepository.save(part);

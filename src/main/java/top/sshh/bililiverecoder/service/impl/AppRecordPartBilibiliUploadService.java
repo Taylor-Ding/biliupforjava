@@ -86,6 +86,7 @@ public class AppRecordPartBilibiliUploadService implements RecordPartUploadServi
 
     @Override
     public void asyncUpload(RecordHistoryPart part) {
+        part = partRepository.findById(part.getId()).get();
         log.info("partId={},异步上传任务开始==>{}", part.getId(), part.getFilePath());
         this.upload(part);
     }
@@ -232,13 +233,14 @@ public class AppRecordPartBilibiliUploadService implements RecordPartUploadServi
 
                             runnableList.stream().parallel().forEach(Runnable::run);
                             if (tryCount.get() >= 200) {
+                                part = partRepository.findById(part.getId()).get();
                                 part.setUpload(false);
+                                part.setUploadRetryCount(part.getUploadRetryCount() + 1);
                                 part = partRepository.save(part);
-                                historyOptional = historyRepository.findById(history.getId());
-                                if (historyOptional.isPresent()) {
-                                    history = historyOptional.get();
-                                    history.setUploadRetryCount(history.getUploadRetryCount() + 1);
-                                    history = historyRepository.save(history);
+                                if (part.getUploadRetryCount() < 2) {
+                                    Thread.sleep(5000);
+                                    uploadServiceFactory.getUploadService(room.getLine()).asyncUpload(part);
+                                    log.info("尝试重新上传{}", filePath);
                                 }
                                 //存在异常
                                 TaskUtil.partUploadTask.remove(part.getId());
@@ -267,6 +269,7 @@ public class AppRecordPartBilibiliUploadService implements RecordPartUploadServi
                                 stream.close();
                                 BiliApi.completeUpload(complete, (int)chunkNum, fileSize, md5,
                                         uploadFile.getName(), "2.3.0.1088");
+                                part = partRepository.findById(part.getId()).get();
                                 part.setFileName(filename);
                                 part.setUpload(true);
                                 part.setUpdateTime(LocalDateTime.now());
@@ -292,6 +295,7 @@ public class AppRecordPartBilibiliUploadService implements RecordPartUploadServi
                                     if (files != null) {
                                         for (File file : files) {
                                             if (!filePath.startsWith(workPath)) {
+                                                part = partRepository.findById(part.getId()).get();
                                                 part.setFileDelete(true);
                                                 part = partRepository.save(part);
                                                 continue;
@@ -305,7 +309,7 @@ public class AppRecordPartBilibiliUploadService implements RecordPartUploadServi
                                             }
                                         }
                                     }
-
+                                    part = partRepository.findById(part.getId()).get();
                                     part.setFilePath(toDirPath + filePath.substring(filePath.lastIndexOf("/") + 1));
                                     part.setFileDelete(true);
                                     part = partRepository.save(part);
