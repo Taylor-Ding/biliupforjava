@@ -127,7 +127,9 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                         if (history.getUploadRetryCount() < 2) {
                             history.setRecordPartCount(history.getRecordPartCount());
                             history = historyRepository.save(history);
+                            Thread.sleep(5000);
                             uploadServiceFactory.getUploadService(room.getLine()).asyncUpload(part);
+                            log.info("尝试重新上传{}", filePath);
                         }
                         return;
                     }
