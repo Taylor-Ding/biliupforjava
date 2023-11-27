@@ -25,11 +25,6 @@ public class UploadServiceFactory {
 
     public RecordPartUploadService getUploadService(String line) {
         UploadEnums uploadEnums = UploadEnums.find(line);
-        try {
-            //延迟三秒执行
-            Thread.sleep(3000);
-        } catch (Exception e) {
-        }
         return switch (uploadEnums.getOs()) {
             case AppRecordPartBilibiliUploadService.OS -> appRecordPartBilibiliUploadService;
             case UposRecordPartBilibiliUploadService.OS -> uposRecordPartBilibiliUploadService;

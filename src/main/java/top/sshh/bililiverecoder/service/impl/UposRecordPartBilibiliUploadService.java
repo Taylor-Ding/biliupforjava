@@ -113,11 +113,6 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                 }
                 // 上传任务入队列
                 String filePath = part.getFilePath().intern();
-                File uploadFile = new File(filePath);
-                if (!uploadFile.exists()) {
-                    log.error("分片上传失败，文件不存在==>{}", filePath);
-                    return;
-                }
                 synchronized (filePath) {
                     Optional<RecordHistory> historyOptional = historyRepository.findById(part.getHistoryId());
                     if (!historyOptional.isPresent()) {
@@ -126,6 +121,16 @@ public class UposRecordPartBilibiliUploadService implements RecordPartUploadServ
                         return;
                     }
                     RecordHistory history = historyOptional.get();
+                    File uploadFile = new File(filePath);
+                    if (!uploadFile.exists()) {
+                        log.error("分片上传失败，文件不存在==>{}", filePath);
+                        if (history.getUploadRetryCount() < 2) {
+                            history.setRecordPartCount(history.getRecordPartCount());
+                            history = historyRepository.save(history);
+                            uploadServiceFactory.getUploadService(room.getLine()).asyncUpload(part);
+                        }
+                        return;
+                    }
                     if (history.isUpload()) {
                         if (room.getUploadUserId() == null) {
                             log.info("分片上传事件，没有设置上传用户，无法上传 ==>{}", JSON.toJSONString(room));
