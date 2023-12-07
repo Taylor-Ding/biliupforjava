@@ -105,7 +105,8 @@ public class RecordBiliPublishService {
             for (RecordHistoryPart uploadPart : uploadParts) {
                 // 正常分p不需要在重复上传
                 BiliVideoPartInfoResponse.Video video = videoMap.get(uploadPart.getTitle());
-                if (video == null || (video.getFailCode() == 9 && video.getXcodeState() == 3) || (video.getFailCode() == 0 && video.getXcodeState() == 2)) {
+                // video.getFailCode() == 14 && video.getXcodeState() == 1 时间戳跳变
+                if (video == null || (video.getFailCode() == 9 && video.getXcodeState() == 3) || (video.getFailCode() == 14 && video.getXcodeState() == 1) || (video.getFailCode() == 0 && video.getXcodeState() == 2)) {
                     if (video == null) {
                         errMsg.append(uploadPart.getTitle()).append("   视频不存在\n");
                     } else if (video.getXcodeState() == 2) {
