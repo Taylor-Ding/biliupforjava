@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
@@ -84,7 +85,11 @@ public class RecordEventFileClosedService implements RecordEventService {
                 part.setFileSize(0L);
                 part.setSessionId(sessionId);
                 part.setRecording(eventData.isRecording());
-                part.setStartTime(LocalDateTime.now());
+                if ("blrec".equals(sessionId)) {
+                    part.setStartTime(LocalDateTime.now());
+                } else {
+                    part.setStartTime(LocalDateTime.ofInstant(eventData.getFileOpenTime().toInstant(), ZoneId.of("Asia/Shanghai")));
+                }
                 part.setEndTime(LocalDateTime.now());
             }
             File vidleFile = new File(filePath);
