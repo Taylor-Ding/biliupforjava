@@ -79,6 +79,6 @@ public class RecordEventRecordStartedService implements RecordEventService {
         historyRepository.save(history);
         room.setHistoryId(history.getId());
         roomRepository.save(room);
-        log.info("录制开始事件处理完成");
+        log.info("录制开始事件处理完成==>{}", JSON.toJSONString(history));
     }
 }

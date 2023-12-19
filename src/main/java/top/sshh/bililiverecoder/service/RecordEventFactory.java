@@ -3,7 +3,6 @@ package top.sshh.bililiverecoder.service;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import top.sshh.bililiverecoder.entity.*;
 import top.sshh.bililiverecoder.service.impl.*;
@@ -54,7 +53,6 @@ public class RecordEventFactory {
         };
     }
 
-    @Async
     public void processing(RecordEventDTO eventDTO) {
         if (StringUtils.isBlank(eventDTO.getEventType())) {
             if (eventDTO.getData() != null) {
