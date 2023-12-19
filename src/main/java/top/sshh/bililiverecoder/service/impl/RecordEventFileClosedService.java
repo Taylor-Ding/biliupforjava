@@ -129,40 +129,43 @@ public class RecordEventFileClosedService implements RecordEventService {
                 if (!toDir.exists()) {
                     toDir.mkdirs();
                 }
-                File startDir = new File(startDirPath);
-                File[] files = startDir.listFiles((file, s) -> s.startsWith(fileName));
-                if (files != null) {
-                    for (File file : files) {
-                        if(! filePath.startsWith(workPath)){
-                            part.setFileDelete(true);
-                            part = historyPartRepository.save(part);
-                            continue;
-                        }
-                        if(room.getDeleteType() == 6){
-                            try {
-                                Files.move(Paths.get(file.getPath()), Paths.get(toDirPath + file.getName()),
-                                        StandardCopyOption.REPLACE_EXISTING);
-                                log.error("{}=>文件移动成功！！！", file.getName());
-                            } catch (Exception e) {
-                                log.error("{}=>文件移动失败！！！", file.getName());
+                Long id = part.getId();
+                new Thread(() -> {
+                    RecordHistoryPart part2 = historyPartRepository.findById(id).get();
+                    File startDir = new File(startDirPath);
+                    File[] files = startDir.listFiles((file, s) -> s.startsWith(fileName));
+                    if (files != null) {
+                        for (File file : files) {
+                            if (!filePath.startsWith(workPath)) {
+                                part2.setFileDelete(true);
+                                part2 = historyPartRepository.save(part2);
+                                continue;
                             }
-                        }else if(room.getDeleteType() == 7){
-                            try {
-                                Files.copy(Paths.get(file.getPath()), Paths.get(toDirPath + file.getName()),
-                                        StandardCopyOption.REPLACE_EXISTING);
-                                log.error("{}=>文件复制成功！！！", file.getName());
-                            } catch (Exception e) {
-                                log.error("{}=>文件复制失败！！！", file.getName());
+                            if (room.getDeleteType() == 6) {
+                                try {
+                                    Files.move(Paths.get(file.getPath()), Paths.get(toDirPath + file.getName()),
+                                            StandardCopyOption.REPLACE_EXISTING);
+                                    log.error("{}=>文件移动成功！！！", file.getName());
+                                } catch (Exception e) {
+                                    log.error("{}=>文件移动失败！！！", file.getName());
+                                }
+                            } else if (room.getDeleteType() == 7) {
+                                try {
+                                    Files.copy(Paths.get(file.getPath()), Paths.get(toDirPath + file.getName()),
+                                            StandardCopyOption.REPLACE_EXISTING);
+                                    log.error("{}=>文件复制成功！！！", file.getName());
+                                } catch (Exception e) {
+                                    log.error("{}=>文件复制失败！！！", file.getName());
+                                }
                             }
-                        }
 
+                        }
                     }
-                }
 
-                
-                part.setFilePath(toDirPath + filePath.substring(filePath.lastIndexOf("/") + 1));
-                part.setFileDelete(true);
-                part = historyPartRepository.save(part);
+                    part2.setFilePath(toDirPath + filePath.substring(filePath.lastIndexOf("/") + 1));
+                    part2.setFileDelete(true);
+                    part2 = historyPartRepository.save(part2);
+                }).start();
             }
             // 文件上传操作
             //开始上传该视频分片，异步上传任务。

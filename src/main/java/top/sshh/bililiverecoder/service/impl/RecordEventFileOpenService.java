@@ -84,6 +84,10 @@ public class RecordEventFileOpenService implements RecordEventService {
         RecordHistory history = null;
         if (historyOptional.isPresent()) {
             history = historyOptional.get();
+            if (eventData.getRoomId().equals(history.getRoomId())) {
+                log.error("发生错误:room保存的录制历史不是该主播的录制历史！！！！room==>{}", JSON.toJSONString(room));
+                history = null;
+            }
         }
         //异常情况判断
         if (history == null || (!eventData.getSessionId().equals("blrec") && !eventData.getSessionId().equals(history.getEventId()) && history.getEndTime().isBefore(LocalDateTime.now().minusMinutes(10L)))) {
