@@ -1,6 +1,10 @@
 server:
   port: 80
   forward-headers-strategy: native
+  undertow:
+    threads:
+      worker: 2
+      io: 2
 spring:
   datasource:
     username: bup

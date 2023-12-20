@@ -1,7 +1,5 @@
 package top.sshh.bililiverecoder.entity.data;
 
-import org.apache.tomcat.util.buf.HexUtils;
-
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -119,29 +117,6 @@ public class ByteUtils {
 		}
 		return s;
 	}
-	/**
-	 * hex16进制字符串转为zlib并解压成字符串
-	 * 
-	 * @param s 待转hex16进制字符串
-	 * @return 经解压后的string字符串
-	 */
-	public static String hexStringTozlibInflateString(String s) { 
-		if (s == null || s.equals("")) {
-			return null;
-		}
-		s= s.replace(" ", "");
-        try {  
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();  
-            InflaterOutputStream zos = new InflaterOutputStream(bos);
-
-            zos.write(HexUtils.fromHexString(s));
-            zos.close();  
-//            s =new String(bos.toByteArray(),"utf-8");  
-        } catch (Exception ex) {  
-            ex.printStackTrace();  
-        }  
-        return s;
-    }
 	/**
 	 * byte[]转为zlib并解压成字符串
 	 * 
@@ -300,29 +275,6 @@ public class ByteUtils {
          char[] chars = str.toCharArray();
 
 		return Chars2Bytes_LE(chars);
-    }
-    /**
-	 * hex16进制字符串转为zlib并解压成字符串
-	 * 
-	 * @param s 待转hex16进制字符串
-	 * @return 经解压后的string字符串
-	 */
-	public static byte[] hexStringTozlibInflateByteArray(String s) { 
-		if (s == null || s.equals("")) {
-			return null;
-		}
-		s= s.replace(" ", "");
-		byte[] bs = null;
-        try {  
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();  
-            InflaterOutputStream zos = new InflaterOutputStream(bos);  
-            zos.write(HexUtils.fromHexString(s));
-            zos.close();  
-            bs= bos.toByteArray();
-        } catch (Exception ex) {  
-            ex.printStackTrace();  
-        }  
-        return bs;
     }
 	/**
 	 * byte[] 转long
