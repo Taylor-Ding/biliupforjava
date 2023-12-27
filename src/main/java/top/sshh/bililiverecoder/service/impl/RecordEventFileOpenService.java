@@ -24,6 +24,7 @@ public class RecordEventFileOpenService implements RecordEventService {
 
     @PostConstruct
     public void initWorkPath() {
+        workPath = workPath.replaceAll("\\\\\\\\", "\\\\");
         workPath = workPath.replace("\\", "/");
     }
 

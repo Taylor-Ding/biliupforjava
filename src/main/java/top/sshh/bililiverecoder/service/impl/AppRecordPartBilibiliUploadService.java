@@ -55,6 +55,7 @@ public class AppRecordPartBilibiliUploadService implements RecordPartUploadServi
 
     @PostConstruct
     public void initWorkPath() {
+        workPath = workPath.replaceAll("\\\\\\\\", "\\\\");
         workPath = workPath.replace("\\", "/");
     }
 
