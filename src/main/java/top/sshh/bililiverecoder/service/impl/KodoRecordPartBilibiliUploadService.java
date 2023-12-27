@@ -60,6 +60,7 @@ public class KodoRecordPartBilibiliUploadService implements RecordPartUploadServ
 
     @PostConstruct
     public void initWorkPath() {
+        workPath = workPath.replaceAll("\\\\\\\\", "\\\\");
         workPath = workPath.replace("\\", "/");
     }
 
