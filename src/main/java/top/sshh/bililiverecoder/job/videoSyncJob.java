@@ -51,7 +51,6 @@ public class videoSyncJob {
     @Scheduled(fixedDelay = 300000, initialDelay = 5000)
     public void syncVideo() {
         //查询出所有需要同步的录播记录
-        log.info("同步视频分p cid 开始");
         for (RecordHistory next : historyRepository.findByBvIdNotNullAndPublishIsTrueAndCodeLessThan(0)) {
             BiliVideoInfoResponse videoInfoResponse = BiliApi.getVideoInfo(next.getBvId());
             int code = videoInfoResponse.getCode();

@@ -27,7 +27,12 @@ public class RecordWebHook {
                 lock = "blrec:" + data.getRoomId();
             }
         } else if (recordEvent.getEventData() != null) {
-            lock = "brec:" + recordEvent.getEventData().getSessionId();
+            if ("SessionEnded".equals(recordEvent.getEventType())) {
+                // 录制结束事件要单独线程进行延迟处理，防止直播结束先于录制结束事件处理
+                lock = "brec:SessionEnded";
+            } else {
+                lock = "brec:" + recordEvent.getEventData().getSessionId();
+            }
         }
         synchronized (lock.intern()) {
             log.info("收到录播姬的推送信息==> {}", JSON.toJSONString(recordEvent));
