@@ -91,7 +91,7 @@ public class RecordEventFileOpenService implements RecordEventService {
             }
         }
         //异常情况判断
-        if (history == null || (!eventData.getSessionId().equals("blrec") && !eventData.getSessionId().equals(history.getEventId()) && history.getEndTime().isBefore(LocalDateTime.now().minusMinutes(10L)))) {
+        if (history == null || (!"blrec".equals(eventData.getSessionId()) && !eventData.getSessionId().equals(history.getSessionId()) && history.getEndTime().isBefore(LocalDateTime.now().minusMinutes(10L)))) {
             log.error("录制异常，录制历史没有创建，可能webhook请求顺序错误");
 
             history = new RecordHistory();
