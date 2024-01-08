@@ -27,11 +27,21 @@ public class RecordWebHook {
                 lock = "blrec:" + data.getRoomId();
             }
         } else if (recordEvent.getEventData() != null) {
-            if ("SessionEnded".equals(recordEvent.getEventType())) {
-                // 录制结束事件要单独线程进行延迟处理，防止直播结束先于录制结束事件处理
-                lock = "brec:SessionEnded";
-            } else {
-                lock = "brec:" + recordEvent.getEventData().getSessionId();
+            try {
+                if ("SessionEnded".equals(recordEvent.getEventType())) {
+                    // 录制结束事件要单独线程进行延迟处理，防止直播结束先于录制结束事件处理
+                    Thread.sleep(10000L);
+                    lock = "brec:" + recordEvent.getEventType();
+                } else if ("FileClosed".equals(recordEvent.getEventType())) {
+                    // 录制结束事件要单独线程进行延迟处理，防止下一p文件打开先于文件关闭事件处理
+                    lock = "brec:" + recordEvent.getEventData().getRelativePath();
+                } else if ("FileOpening".equals(recordEvent.getEventType())) {
+                    // 录制结束事件要单独线程进行延迟处理，防止下一p文件打开先于文件关闭事件处理
+                    lock = "brec:" + recordEvent.getEventData().getRelativePath();
+                } else {
+                    lock = "brec:" + recordEvent.getEventData().getSessionId();
+                }
+            } catch (Exception e) {
             }
         }
         synchronized (lock.intern()) {

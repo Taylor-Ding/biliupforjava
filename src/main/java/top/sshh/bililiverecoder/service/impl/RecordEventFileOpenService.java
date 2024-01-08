@@ -51,7 +51,7 @@ public class RecordEventFileOpenService implements RecordEventService {
         log.info("分p开始录制事件==>{}", relativePath);
         String sessionId = eventData.getSessionId();
         try {
-            Thread.sleep(1000L);
+            Thread.sleep(5000L);
         } catch (Exception e) {
             e.printStackTrace();
         }
