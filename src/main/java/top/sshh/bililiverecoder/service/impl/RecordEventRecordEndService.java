@@ -47,11 +47,6 @@ public class RecordEventRecordEndService implements RecordEventService {
     @Override
     public void processing(RecordEventDTO event) {
         RecordEventData eventData = event.getEventData();
-        try {
-            Thread.sleep(10000L);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         log.info("录制结束事件==>{}=={}", eventData.getRoomId(), eventData.getTitle());
         RecordRoom room = roomRepository.findByRoomId(eventData.getRoomId());
         Optional<RecordHistory> historyOptional = historyRepository.findById(room.getHistoryId());
