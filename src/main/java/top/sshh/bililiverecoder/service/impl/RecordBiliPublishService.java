@@ -466,6 +466,12 @@ public class RecordBiliPublishService {
                             if (!cover.exists()) {
                                 cover = new File(filePath.replaceAll(".cover.jpg", ".jpg"));
                             }
+                            if (!cover.exists()) {
+                                cover = new File(filePath.replaceAll(".cover.jpg", ".png"));
+                            }
+                            if (!cover.exists()) {
+                                cover = new File(filePath.replaceAll(".cover.jpg", ".cover.png"));
+                            }
                             byte[] bytes = new byte[(int) cover.length()];
                             FileInputStream inputStream = new FileInputStream(cover);
                             inputStream.read(bytes);
