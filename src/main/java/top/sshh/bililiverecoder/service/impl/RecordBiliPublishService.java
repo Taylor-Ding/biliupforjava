@@ -603,10 +603,15 @@ public class RecordBiliPublishService {
                 .replace("${areaName}", map.get("${areaName}") != null ? map.get("${areaName}").toString() : "")
                 .replace("${roomId}", map.get("${roomId}") != null ? map.get("${roomId}").toString() : "");
         if (template.contains("${")) {
-            LocalDateTime localDateTime = (LocalDateTime) map.get("date");
-            String date = template.substring(template.indexOf("${"), template.indexOf("}") + 1);
-            String format = localDateTime.format(DateTimeFormatter.ofPattern(date.substring(2, date.length() - 1)));
-            template = template.replace(date, format);
+            try {
+                LocalDateTime localDateTime = (LocalDateTime)map.get("date");
+                String substring = template.substring(template.indexOf("${"));
+                String date = substring.substring(0, substring.indexOf("}") + 1);
+                String format = localDateTime.format(DateTimeFormatter.ofPattern(date.substring(2, date.length() - 1)));
+                template = template.replace(date, format);
+            } catch (Exception e) {
+                log.error("时间格式模板失败：" + template);
+            }
         }
         template = template.replace(",,", ",");
         return template;
