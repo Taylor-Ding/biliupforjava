@@ -448,6 +448,9 @@ public class RecordBiliPublishService {
                         map.put("date", uploadPart.getStartTime());
                         map.put("${index}", i + 1);
                         map.put("${areaName}", uploadPart.getAreaName());
+                        String filePath = uploadPart.getFilePath();
+                        String fileName = filePath.substring(filePath.lastIndexOf("/") + 1, filePath.lastIndexOf("."));
+                        map.put("${fileName}", fileName);
                         dto.setTitle(this.template(room.getPartTitleTemplate(), map));
                         //同步标题
                         uploadPart.setTitle(this.template(room.getPartTitleTemplate(), map));
